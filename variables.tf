@@ -9,5 +9,5 @@ variable "private_subnets" { default = ["10.0.101.0/24", "10.0.102.0/24"] }
 # ------------------------------------------------------------
 # ECS 
 # ------------------------------------------------------------
-variable "home_service_container_port" { default = 3000 }
-variable "slave_service_container_port" { default = 3001 }
+variable "weatherapi_host_port" { default = 80 }
+variable "weatherapi_container_port" { default = 80 }
