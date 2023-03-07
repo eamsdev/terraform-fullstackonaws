@@ -25,78 +25,19 @@ module "vpc" {
   }
 }
 
+module "services_weather_api" {
+  source = "./modules/services/weather_api"
 
-
-# ------------------------------------------------------------
-# ECS Apps
-# ------------------------------------------------------------
-resource "aws_cloudwatch_log_group" "weatherapi_log_group" {
-  name = "/ecs/${local.name_prefix}-weatherapi-service"
-}
-
-resource "aws_ecs_task_definition" "weatherapi_task_definition" {
-  family = "weatherapi-task-family"
-
-  container_definitions = <<EOF
-  [
-    {
-      "name": "${local.name_prefix}-weatherapi-container",
-      "image": "docker.io/newdevpleaseignore/weatherapi:latest",
-      "logConfiguration": {
-        "logDriver": "awslogs",
-        "options": {
-          "awslogs-region": "${var.aws_region}",
-          "awslogs-group": "/ecs/${local.name_prefix}-weatherapi-service",
-          "awslogs-stream-prefix": "ecs"
-        }
-      },
-      "portMappings": [
-        {
-          "containerPort": ${var.weatherapi_container_port},
-          "hostPort": ${var.weatherapi_host_port}
-        }
-      ]
-    }
-  ]
-  EOF
-
-  execution_role_arn = module.ecs.ecs_task_execution_role_arn
-  task_role_arn      = module.ecs.ecs_task_execution_role_arn
-
-  # These are the minimum values for Fargate containers.
-  cpu                      = 256
-  memory                   = 512
-  requires_compatibilities = ["FARGATE"]
-  network_mode = "awsvpc"
-
-  tags = {
-    Terraform = "true"
-  }
-}
-
-resource "aws_ecs_service" "weatherapi_service" {
-  name            = "${local.name_prefix}-weatherapi-service"
-  task_definition = aws_ecs_task_definition.weatherapi_task_definition.arn
-  cluster         = module.ecs.aws_ecs_cluster_id 
-  launch_type     = "FARGATE"
-
-  desired_count = 1
-
-  load_balancer {
-    target_group_arn = module.load_balancer.aws_alb_target_group.arn
-    container_name   = "${local.name_prefix}-weatherapi-container"
-    container_port   = var.weatherapi_container_port
-  }
-
-  network_configuration {
-    security_groups  = [module.ecs.ecs_tasks_sg_id]
-    subnets          = module.vpc.private_subnets
-    assign_public_ip = false
-  }
-
-  tags = {
-    Terraform = "true"
-  }
+  name_prefix = local.name_prefix
+  vpc_id = module.vpc.vpc_id
+  aws_region = var.aws_region
+  private_subnets = module.vpc.private_subnets
+  ecs_tasks_sg_id = module.ecs.ecs_tasks_sg_id
+  aws_ecs_cluster_id = module.ecs.aws_ecs_cluster_id
+  weatherapi_host_port = var.weatherapi_host_port
+  weatherapi_container_port = var.weatherapi_container_port
+  ecs_task_execution_role_arn = module.ecs.ecs_task_execution_role_arn
+  aws_alb_target_group_arn = module.load_balancer.aws_alb_target_group.arn
 }
 
 module "ecs" {

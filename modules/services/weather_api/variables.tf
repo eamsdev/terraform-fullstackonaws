@@ -1,0 +1,10 @@
+variable "name_prefix" {}
+variable "vpc_id" {}
+variable "aws_region" {}
+variable "private_subnets" {}
+variable "ecs_tasks_sg_id" {}
+variable "aws_ecs_cluster_id" {}
+variable "weatherapi_host_port" {}
+variable "weatherapi_container_port" {}
+variable "ecs_task_execution_role_arn" {}
+variable "aws_alb_target_group_arn" {}
