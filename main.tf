@@ -212,9 +212,10 @@ module "acm" {
 module "routes" {
   source = "./modules/routes"
   aws_acm_certificate = module.acm.aws_acm_certificate
-  aws_api_gateway_domain_name = module.api_gateway.aws_api_gateway_domain_name
+  domain_name = module.api_gateway.aws_api_gateway_domain_name
+  regional_domain_name = module.api_gateway.aws_api_gateway_regional_domain_name
 }
 
 output "api_gateway_endpoint" {
-  value = "https://${module.api_gateway.aws_api_gateway_domain_name.domain_name}"
+  value = "https://${module.api_gateway.aws_api_gateway_domain_name}"
 }
