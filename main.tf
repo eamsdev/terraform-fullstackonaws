@@ -199,7 +199,6 @@ resource "aws_lb" "alb" {
   name               = "${local.name_prefix}-alb"
   internal           = false
   load_balancer_type = "network"
-  //security_groups    = [aws_security_group.alb_sg.id]
   subnets            = module.vpc.public_subnets
 
   enable_deletion_protection = false
@@ -239,118 +238,117 @@ resource "aws_alb_listener" "http" {
 # AWS Api Gateway
 # ------------------------------------------------------------
 
-resource "aws_api_gateway_vpc_link" "main" {
-  name        = "${local.name_prefix}-vpc-link"
-  description = "allows public API Gateway for ${local.name_prefix} to talk to private NLB"
-  target_arns = [aws_lb.alb.arn]
+# resource "aws_api_gateway_vpc_link" "main" {
+#   name        = "${local.name_prefix}-vpc-link"
+#   description = "allows public API Gateway for ${local.name_prefix} to talk to private NLB"
+#   target_arns = [aws_lb.alb.arn]
+# }
+
+# resource "aws_api_gateway_rest_api" "main" {
+#   name = "${local.name_prefix}-api-gateway-rest-api"
+
+#   endpoint_configuration {
+#     types = ["REGIONAL"]
+#   }
+# }
+
+# resource "aws_api_gateway_resource" "main" {
+#   rest_api_id = aws_api_gateway_rest_api.main.id
+#   parent_id   = aws_api_gateway_rest_api.main.root_resource_id
+#   path_part   = "{proxy+}"
+# }
+
+# resource "aws_api_gateway_method" "main" {
+#   rest_api_id      = aws_api_gateway_rest_api.main.id
+#   resource_id      = aws_api_gateway_resource.main.id
+#   http_method      = "ANY"
+#   authorization    = "NONE"
+#   api_key_required = false
+#   request_parameters = {
+#     "method.request.path.proxy" = true
+#   }
+# }
+
+# resource "aws_api_gateway_integration" "main" {
+#   rest_api_id = aws_api_gateway_rest_api.main.id
+#   resource_id = aws_api_gateway_resource.main.id
+#   http_method = aws_api_gateway_method.main.http_method
+
+#   type                    = "HTTP_PROXY"
+#   integration_http_method = "ANY"
+#   uri                     = "http://${aws_lb.alb.dns_name}/{proxy}"
+#   connection_type         = "VPC_LINK"
+#   connection_id           = aws_api_gateway_vpc_link.main.id
+#   timeout_milliseconds    = 29000 # 50-29000
+
+#   cache_key_parameters = ["method.request.path.proxy"]
+#   request_parameters = {
+#     "integration.request.path.proxy" = "method.request.path.proxy"
+#   }
+# }
+
+# resource "aws_api_gateway_method_response" "main" {
+#   rest_api_id = aws_api_gateway_rest_api.main.id
+#   resource_id = aws_api_gateway_resource.main.id
+#   http_method = aws_api_gateway_method.main.http_method
+#   status_code = "200"
+# }
+
+# resource "aws_api_gateway_integration_response" "main" {
+#   rest_api_id = aws_api_gateway_rest_api.main.id
+#   resource_id = aws_api_gateway_resource.main.id
+#   http_method = aws_api_gateway_method.main.http_method
+#   status_code = aws_api_gateway_method_response.main.status_code
+
+#   response_templates = {
+#     "application/json" = ""
+#   }
+
+#   depends_on = [
+#     aws_api_gateway_integration.main
+#   ]
+# }
+
+# resource "aws_api_gateway_deployment" "main" {
+#   depends_on  = [aws_api_gateway_integration.main]
+#   rest_api_id = aws_api_gateway_rest_api.main.id
+#   stage_name  = "v1"
+# }
+
+# resource "aws_api_gateway_base_path_mapping" "main" {
+#   api_id      = aws_api_gateway_rest_api.main.id
+#   stage_name  = aws_api_gateway_deployment.main.stage_name
+#   domain_name = aws_api_gateway_domain_name.main.domain_name
+# }
+
+
+# resource "aws_api_gateway_domain_name" "main" {
+#   domain_name              = var.api_gateway_domain_name
+#   regional_certificate_arn = module.acm.aws_acm_certificate.arn
+
+#   endpoint_configuration {
+#     types = ["REGIONAL"]
+#   }
+# }
+
+module "api_gateway" {
+  source = "./modules/api_gateway"
+  name_prefix = local.name_prefix
+  aws_lb = aws_lb.alb
+  aws_acm_certificate = module.acm.aws_acm_certificate
+  api_gateway_domain_name = var.api_gateway_domain_name
 }
 
-resource "aws_api_gateway_rest_api" "main" {
-  name = "${local.name_prefix}-api-gateway-rest-api"
-
-  endpoint_configuration {
-    types = ["REGIONAL"]
-  }
+module "acm" {
+  source = "./modules/acm"
 }
 
-resource "aws_api_gateway_resource" "main" {
-  rest_api_id = aws_api_gateway_rest_api.main.id
-  parent_id   = aws_api_gateway_rest_api.main.root_resource_id
-  path_part   = "{proxy+}"
-}
-
-resource "aws_api_gateway_method" "main" {
-  rest_api_id      = aws_api_gateway_rest_api.main.id
-  resource_id      = aws_api_gateway_resource.main.id
-  http_method      = "ANY"
-  authorization    = "NONE"
-  api_key_required = false
-  request_parameters = {
-    "method.request.path.proxy" = true
-  }
-}
-
-resource "aws_api_gateway_integration" "main" {
-  rest_api_id = aws_api_gateway_rest_api.main.id
-  resource_id = aws_api_gateway_resource.main.id
-  http_method = aws_api_gateway_method.main.http_method
-
-  type                    = "HTTP_PROXY"
-  integration_http_method = "ANY"
-  uri                     = "http://${aws_lb.alb.dns_name}/{proxy}"
-  connection_type         = "VPC_LINK"
-  connection_id           = aws_api_gateway_vpc_link.main.id
-  timeout_milliseconds    = 29000 # 50-29000
-
-  cache_key_parameters = ["method.request.path.proxy"]
-  request_parameters = {
-    "integration.request.path.proxy" = "method.request.path.proxy"
-  }
-}
-
-resource "aws_api_gateway_method_response" "main" {
-  rest_api_id = aws_api_gateway_rest_api.main.id
-  resource_id = aws_api_gateway_resource.main.id
-  http_method = aws_api_gateway_method.main.http_method
-  status_code = "200"
-}
-
-resource "aws_api_gateway_integration_response" "main" {
-  rest_api_id = aws_api_gateway_rest_api.main.id
-  resource_id = aws_api_gateway_resource.main.id
-  http_method = aws_api_gateway_method.main.http_method
-  status_code = aws_api_gateway_method_response.main.status_code
-
-  response_templates = {
-    "application/json" = ""
-  }
-
-  depends_on = [
-    aws_api_gateway_integration.main
-  ]
-}
-
-resource "aws_api_gateway_deployment" "main" {
-  depends_on  = [aws_api_gateway_integration.main]
-  rest_api_id = aws_api_gateway_rest_api.main.id
-  stage_name  = "v1"
-}
-
-resource "aws_api_gateway_base_path_mapping" "main" {
-  api_id      = aws_api_gateway_rest_api.main.id
-  stage_name  = aws_api_gateway_deployment.main.stage_name
-  domain_name = aws_api_gateway_domain_name.main.domain_name
+module "routes" {
+  source = "./modules/routes"
+  aws_acm_certificate = module.acm.aws_acm_certificate
+  aws_api_gateway_domain_name = module.api_gateway.aws_api_gateway_domain_name
 }
 
 output "api_gateway_endpoint" {
-  value = "https://${aws_api_gateway_domain_name.main.domain_name}"
-}
-
-# ------------------------------------------------------------
-# DNS
-# ------------------------------------------------------------
-
-data "aws_acm_certificate" "main" {
-  domain = "*.eams.dev"
-}
-
-data "aws_route53_zone" "main" {
-  name = "eams.dev"
-}
-
-resource "aws_api_gateway_domain_name" "main" {
-  domain_name              = "api.eams.dev"
-  regional_certificate_arn = data.aws_acm_certificate.main.arn
-
-  endpoint_configuration {
-    types = ["REGIONAL"]
-  }
-}
-
-resource "aws_route53_record" "main" {
-  zone_id = data.aws_route53_zone.main.zone_id
-  name    = aws_api_gateway_domain_name.main.domain_name
-  type    = "CNAME"
-  records = [aws_api_gateway_domain_name.main.regional_domain_name]
-  ttl     = "60"
+  value = "https://${module.api_gateway.aws_api_gateway_domain_name.domain_name}"
 }
