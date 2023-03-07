@@ -29,6 +29,7 @@ Before getting started, you will need to have the following installed on your ma
 The following features will be added in the future:
 
 - AWS RDS support for SQL
+- Accessing the internet from the private subnet (needs testing)
 - Multiple ECS task support
 - Cloudfront for static hosting
 
