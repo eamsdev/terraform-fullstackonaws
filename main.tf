@@ -2,10 +2,14 @@ terraform {
   backend "s3" {}
 }
 
+locals {
+  name_prefix = "eamsdev-${var.stack_identifier}-${var.environment}"
+}
+
 module "vpc" {
   source = "terraform-aws-modules/vpc/aws"
 
-  name = "main-vpc"
+  name = "${local.name_prefix}-vpc"
   cidr = var.aws_main_vpc_cidr
 
   azs                  = var.aws_availability_zones
@@ -26,10 +30,9 @@ module "vpc" {
 # ------------------------------------------------------------
 
 resource "aws_security_group" "alb_sg" {
-  name   = "alb-sg"
+  name   = "${local.name_prefix}-alb-sg"
   vpc_id = module.vpc.vpc_id
 
-  // TODO: Change these ingress to be from whitelisted sources for production
   ingress {
     protocol    = "tcp"
     from_port   = 80
@@ -57,14 +60,14 @@ resource "aws_security_group" "alb_sg" {
 }
 
 resource "aws_security_group" "ecs_tasks_sg" {
-  name   = "ecs-task-sg"
+  name   = "${local.name_prefix}-ecs-tasks-sg"
   vpc_id = module.vpc.vpc_id
 
   ingress {
     protocol    = "-1"
     from_port   = 0
     to_port     = 0
-    cidr_blocks = ["0.0.0.0/0"] # Change to ALB security group
+    security_groups = [aws_security_group.alb_sg.id]
   }
 
   egress {
@@ -83,14 +86,14 @@ resource "aws_security_group" "ecs_tasks_sg" {
 # ECS Cluster
 # ------------------------------------------------------------
 resource "aws_ecs_cluster" "main" {
-  name = "ecs-cluster"
+  name = "${local.name_prefix}-ecs-cluster"
 }
 
 # ------------------------------------------------------------
 # ECS Tasks Permissions
 # ------------------------------------------------------------
 resource "aws_iam_role" "ecs_task_execution_role" {
-  name               = "ecs-task-execution-role"
+  name               = "${local.name_prefix}-ecs-task-execution-role"
   assume_role_policy = data.aws_iam_policy_document.ecs_task_assume_role.json
   
   tags = {
@@ -118,7 +121,7 @@ resource "aws_iam_role_policy_attachment" "ecs-task-execution-role-policy-attach
 # ECS Apps
 # ------------------------------------------------------------
 resource "aws_cloudwatch_log_group" "weatherapi_log_group" {
-  name = "/ecs/weatherapi-service"
+  name = "/ecs/${local.name_prefix}-weatherapi-service"
 }
 
 resource "aws_ecs_task_definition" "weatherapi_task_definition" {
@@ -127,13 +130,13 @@ resource "aws_ecs_task_definition" "weatherapi_task_definition" {
   container_definitions = <<EOF
   [
     {
-      "name": "weatherapi-container",
+      "name": "${local.name_prefix}-weatherapi-container",
       "image": "docker.io/newdevpleaseignore/weatherapi:latest",
       "logConfiguration": {
         "logDriver": "awslogs",
         "options": {
           "awslogs-region": "ap-southeast-2",
-          "awslogs-group": "/ecs/weatherapi-service",
+          "awslogs-group": "/ecs/${local.name_prefix}-weatherapi-service",
           "awslogs-stream-prefix": "ecs"
         }
       },
@@ -161,11 +164,8 @@ resource "aws_ecs_task_definition" "weatherapi_task_definition" {
   }
 }
 
-# ------------------------------------------------------------
-# ECS Service
-# ------------------------------------------------------------
 resource "aws_ecs_service" "weatherapi_service" {
-  name            = "weatherapi-service"
+  name            = "${local.name_prefix}-weatherapi-service"
   task_definition = aws_ecs_task_definition.weatherapi_task_definition.arn
   cluster         = aws_ecs_cluster.main.id
   launch_type     = "FARGATE"
@@ -173,15 +173,15 @@ resource "aws_ecs_service" "weatherapi_service" {
   desired_count = 1
 
   load_balancer {
-    target_group_arn = aws_alb_target_group.main.arn
-    container_name   = "weatherapi-container"
+    target_group_arn = aws_alb_target_group.alb.arn
+    container_name   = "${local.name_prefix}-weatherapi-container"
     container_port   = var.weatherapi_container_port
   }
 
   network_configuration {
     security_groups  = [aws_security_group.ecs_tasks_sg.id]
     subnets          = module.vpc.private_subnets
-    assign_public_ip = true
+    assign_public_ip = false
   }
 
   tags = {
@@ -194,8 +194,8 @@ resource "aws_ecs_service" "weatherapi_service" {
 # Notes:
 #     - ALB stays in the public subnet to service incoming network requests
 # ------------------------------------------------------------
-resource "aws_lb" "main" {
-  name               = "alb"
+resource "aws_lb" "alb" {
+  name               = "${local.name_prefix}-alb"
   internal           = false
   load_balancer_type = "application"
   security_groups    = [aws_security_group.alb_sg.id]
@@ -207,8 +207,8 @@ resource "aws_lb" "main" {
   }
 }
 
-resource "aws_alb_target_group" "main" {
-  name        = "tg"
+resource "aws_alb_target_group" "alb" {
+  name        = "${local.name_prefix}-alb-tg"
   port        = var.weatherapi_container_port
   protocol    = "HTTP"
   vpc_id      = module.vpc.vpc_id
@@ -224,12 +224,12 @@ resource "aws_alb_target_group" "main" {
 }
 
 resource "aws_alb_listener" "http" {
-  load_balancer_arn = aws_lb.main.id
+  load_balancer_arn = aws_lb.alb.id
   port              = 80
   protocol          = "HTTP"
 
   default_action {
-    target_group_arn = aws_alb_target_group.main.id
+    target_group_arn = aws_alb_target_group.alb.id
     type             = "forward"
   }
 }
