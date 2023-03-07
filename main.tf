@@ -25,19 +25,8 @@ module "vpc" {
   }
 }
 
-module "services_weather_api" {
-  source = "./modules/services/weather_api"
-
-  name_prefix = local.name_prefix
-  vpc_id = module.vpc.vpc_id
-  aws_region = var.aws_region
-  private_subnets = module.vpc.private_subnets
-  ecs_tasks_sg_id = module.ecs.ecs_tasks_sg_id
-  aws_ecs_cluster_id = module.ecs.aws_ecs_cluster_id
-  weatherapi_host_port = var.weatherapi_host_port
-  weatherapi_container_port = var.weatherapi_container_port
-  ecs_task_execution_role_arn = module.ecs.ecs_task_execution_role_arn
-  aws_alb_target_group_arn = module.load_balancer.aws_alb_target_group.arn
+module "acm" {
+  source = "./modules/acm"
 }
 
 module "ecs" {
@@ -55,6 +44,14 @@ module "load_balancer" {
   target_port = var.weatherapi_container_port
 }
 
+module "routes" {
+  source = "./modules/routes"
+
+  aws_acm_certificate = module.acm.aws_acm_certificate
+  domain_name = module.api_gateway.aws_api_gateway_domain_name
+  regional_domain_name = module.api_gateway.aws_api_gateway_regional_domain_name
+}
+
 module "api_gateway" {
   source = "./modules/api_gateway"
 
@@ -64,16 +61,19 @@ module "api_gateway" {
   api_gateway_domain_name = var.api_gateway_domain_name
 }
 
-module "acm" {
-  source = "./modules/acm"
-}
+module "services_weather_api" {
+  source = "./modules/services/weather_api"
 
-module "routes" {
-  source = "./modules/routes"
-
-  aws_acm_certificate = module.acm.aws_acm_certificate
-  domain_name = module.api_gateway.aws_api_gateway_domain_name
-  regional_domain_name = module.api_gateway.aws_api_gateway_regional_domain_name
+  name_prefix = local.name_prefix
+  vpc_id = module.vpc.vpc_id
+  aws_region = var.aws_region
+  private_subnets = module.vpc.private_subnets
+  ecs_tasks_sg_id = module.ecs.ecs_tasks_sg_id
+  aws_ecs_cluster_id = module.ecs.aws_ecs_cluster_id
+  weatherapi_host_port = var.weatherapi_host_port
+  weatherapi_container_port = var.weatherapi_container_port
+  ecs_task_execution_role_arn = module.ecs.ecs_task_execution_role_arn
+  aws_alb_target_group_arn = module.load_balancer.aws_alb_target_group.arn
 }
 
 output "api_gateway_endpoint" {
