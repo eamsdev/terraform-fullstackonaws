@@ -15,10 +15,12 @@ module "vpc" {
   azs                  = var.aws_availability_zones
   private_subnets      = var.public_subnets
   public_subnets       = var.private_subnets
+  database_subnets     = var.database_subnets
   enable_dns_hostnames = true
   enable_dns_support   = true
 
   enable_nat_gateway = true
+  create_database_subnet_group = true
 
   tags = {
     Terraform = "true"
@@ -61,6 +63,16 @@ module "api_gateway" {
   api_gateway_domain_name = var.api_gateway_domain_name
 }
 
+module "rds" {
+  source = "./modules/rds"
+
+  vpc_id = module.vpc.vpc_id
+  database_subnet_group_name = module.vpc.database_subnet_group_name
+  name_prefix = local.name_prefix
+  database_username = var.database_username
+  database_password = var.database_password
+}
+
 module "services_weather_api" {
   source = "./modules/services/weather_api"
 
@@ -69,6 +81,7 @@ module "services_weather_api" {
   aws_region = var.aws_region
   private_subnets = module.vpc.private_subnets
   ecs_tasks_sg_id = module.ecs.ecs_tasks_sg_id
+  db_access_sg_id = module.rds.db_access_sg_id
   aws_ecs_cluster_id = module.ecs.aws_ecs_cluster_id
   weatherapi_host_port = var.weatherapi_host_port
   weatherapi_container_port = var.weatherapi_container_port
@@ -78,4 +91,8 @@ module "services_weather_api" {
 
 output "api_gateway_endpoint" {
   value = "https://${module.api_gateway.aws_api_gateway_domain_name}"
+}
+
+output "db_endpoint" {
+  value = "${module.rds.aws_db_endpoint}"
 }

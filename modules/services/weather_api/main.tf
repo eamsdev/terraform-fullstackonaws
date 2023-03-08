@@ -61,7 +61,7 @@ resource "aws_ecs_service" "weatherapi_service" {
   }
 
   network_configuration {
-    security_groups  = [var.ecs_tasks_sg_id]
+    security_groups  = [var.ecs_tasks_sg_id, var.db_access_sg_id]
     subnets          = var.private_subnets
     assign_public_ip = false
   }
