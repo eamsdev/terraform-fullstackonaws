@@ -87,6 +87,7 @@ module "services_weather_api" {
   weatherapi_container_port = var.weatherapi_container_port
   ecs_task_execution_role_arn = module.ecs.ecs_task_execution_role_arn
   aws_alb_target_group_arn = module.load_balancer.aws_alb_target_group.arn
+  connection_string = "server=${module.rds.aws_db_address};port=${module.rds.aws_db_port};uid=${var.database_username};pwd=${var.database_password};database=weather_api;sslmode=required"
 }
 
 output "api_gateway_endpoint" {

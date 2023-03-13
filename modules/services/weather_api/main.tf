@@ -14,6 +14,9 @@ resource "aws_ecs_task_definition" "weatherapi_task_definition" {
     {
       "name": "${var.name_prefix}-weatherapi-container",
       "image": "docker.io/newdevpleaseignore/weatherapi:latest",
+      "environment": [
+        {"name": "ASPNETCORE_ConnectionStrings__dbConnectionString", "value": "${var.connection_string}"}
+      ],
       "logConfiguration": {
         "logDriver": "awslogs",
         "options": {

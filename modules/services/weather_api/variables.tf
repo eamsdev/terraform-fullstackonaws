@@ -9,3 +9,4 @@ variable "weatherapi_host_port" {}
 variable "weatherapi_container_port" {}
 variable "ecs_task_execution_role_arn" {}
 variable "aws_alb_target_group_arn" {}
+variable "connection_string" {}
