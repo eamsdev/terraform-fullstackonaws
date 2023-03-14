@@ -17,6 +17,7 @@ module "vpc" {
   public_subnets                          = var.private_subnets
   database_subnets                        = var.database_subnets
   create_database_internet_gateway_route  = var.public_db
+  create_database_subnet_route_table      = var.public_db
   enable_dns_hostnames                    = true
   enable_dns_support                      = true
 
@@ -68,10 +69,11 @@ module "rds" {
   source = "./modules/rds"
 
   vpc_id = module.vpc.vpc_id
-  database_subnet_group_name = module.vpc.database_subnet_group_name
+  public_db = var.public_db
   name_prefix = local.name_prefix
   database_username = var.database_username
   database_password = var.database_password
+  database_subnet_group_name = module.vpc.database_subnet_group_name
 }
 
 module "services_weather_api" {

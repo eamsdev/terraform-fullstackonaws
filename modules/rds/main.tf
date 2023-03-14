@@ -13,22 +13,6 @@ resource "aws_security_group" "rds_sg" {
   description = "${var.name_prefix} Security Group"
   vpc_id = "${var.vpc_id}"
 
-  // allows traffic from the SG itself
-  ingress {
-      from_port = 0
-      to_port = 0
-      protocol = "-1"
-      self = true
-  }
-
-  //allow traffic for TCP 5432
-  ingress {
-      from_port = 3306
-      to_port   = 3306
-      protocol  = "tcp"
-      security_groups = ["${aws_security_group.db_access_sg.id}"]
-  }
-
   // outbound internet access
   egress {
     from_port = 0
@@ -36,6 +20,34 @@ resource "aws_security_group" "rds_sg" {
     protocol = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
+}
+
+resource "aws_security_group_rule" "db_public_access_any_rule" {
+  security_group_id = aws_security_group.rds_sg.id
+  count = var.public_db ? 1 : 0
+  type  = "ingress"
+  from_port = 0
+  to_port = 0
+  cidr_blocks = ["0.0.0.0/0"]
+  protocol = -1
+}
+
+resource "aws_security_group_rule" "db_private_access_self_rule" {
+  security_group_id = aws_security_group.rds_sg.id
+  type  = "ingress"
+  from_port = 0
+  to_port = 0
+  self = true
+  protocol = -1
+}
+
+resource "aws_security_group_rule" "db_private_access_sg_rule" {
+  security_group_id = aws_security_group.rds_sg.id
+  type  = "ingress"
+  from_port = 3306
+  to_port = 3306
+  protocol = "tcp"
+  source_security_group_id = aws_security_group.db_access_sg.id
 }
 
 resource "aws_db_instance" "rds" {
@@ -51,4 +63,5 @@ resource "aws_db_instance" "rds" {
   db_subnet_group_name   = "${var.database_subnet_group_name}"
   vpc_security_group_ids = ["${aws_security_group.rds_sg.id}"]
   skip_final_snapshot    = true
+  publicly_accessible    = var.public_db 
 }
