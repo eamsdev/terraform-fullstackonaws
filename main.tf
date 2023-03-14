@@ -9,18 +9,19 @@ locals {
 module "vpc" {
   source = "terraform-aws-modules/vpc/aws"
 
-  name = "${local.name_prefix}-vpc"
-  cidr = var.aws_main_vpc_cidr
+  name                                    = "${local.name_prefix}-vpc"
+  cidr                                    = var.aws_main_vpc_cidr
 
-  azs                  = var.aws_availability_zones
-  private_subnets      = var.public_subnets
-  public_subnets       = var.private_subnets
-  database_subnets     = var.database_subnets
-  enable_dns_hostnames = true
-  enable_dns_support   = true
+  azs                                     = var.aws_availability_zones
+  private_subnets                         = var.public_subnets
+  public_subnets                          = var.private_subnets
+  database_subnets                        = var.database_subnets
+  create_database_internet_gateway_route  = var.public_db
+  enable_dns_hostnames                    = true
+  enable_dns_support                      = true
 
-  enable_nat_gateway = true
-  create_database_subnet_group = true
+  enable_nat_gateway                      = true
+  create_database_subnet_group            = true
 
   tags = {
     Terraform = "true"

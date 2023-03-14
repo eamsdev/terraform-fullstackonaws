@@ -26,3 +26,4 @@ variable "weatherapi_container_port" { default = 80 }
 # ------------------------------------------------------------
 variable "database_username" {}
 variable "database_password" {}
+variable "public_db" {}
