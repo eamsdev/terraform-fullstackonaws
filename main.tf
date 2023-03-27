@@ -93,10 +93,20 @@ module "services_weather_api" {
   connection_string = "server=${module.rds.aws_db_address};port=${module.rds.aws_db_port};uid=${var.database_username};pwd=${var.database_password};database=weather_api;sslmode=required"
 }
 
+module "cloudfront" {
+  source = "./modules/cloudfront"
+
+  aws_api_gateway_domain_name = module.api_gateway.aws_api_gateway_domain_name
+}
+
 output "api_gateway_endpoint" {
   value = "https://${module.api_gateway.aws_api_gateway_domain_name}"
 }
 
 output "db_endpoint" {
   value = "${module.rds.aws_db_endpoint}"
+}
+
+output "cloudfront_domain_name" {
+  value = "${module.cloudfront.cloudfront_domain_name}"
 }
