@@ -62,6 +62,10 @@ resource "aws_route53_record" "cloudfront_record" {
   zone_id = data.aws_route53_zone.main.zone_id
   name    = var.cloudfront_alternate_domain
   type    = "A"
-  ttl     = "300"
-  records = [aws_cloudfront_distribution.api_gateway.domain_name]
+  
+  alias {
+    name                   = aws_cloudfront_distribution.api_gateway.domain_name
+    zone_id                = aws_cloudfront_distribution.api_gateway.hosted_zone_id
+    evaluate_target_health = true
+  }
 }
