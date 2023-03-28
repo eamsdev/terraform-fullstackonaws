@@ -1,4 +1,54 @@
 # ------------------------------------------------------------
+# S3
+# ------------------------------------------------------------
+resource "aws_s3_bucket" "origin" {
+  bucket        = "eamsdev-application-bucket"
+  force_destroy = true
+}
+
+resource "aws_s3_bucket_acl" "origin_avl" {
+  bucket = aws_s3_bucket.origin.id
+  acl    = "private"
+}
+
+resource "aws_s3_bucket_versioning" "origin_versioning" {
+  bucket = aws_s3_bucket.origin.id
+
+  versioning_configuration {
+    status = "Disabled"
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "s3_block_public" {
+  bucket = aws_s3_bucket.origin.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+resource "aws_cloudfront_origin_access_identity" "storage" {
+  comment = "Identity for S3 eamsdev-application-bucket bucket."
+}
+
+data "aws_iam_policy_document" "read_only_access" {
+  statement {
+    principals {
+      identifiers = [aws_cloudfront_origin_access_identity.storage.iam_arn]
+      type        = "AWS"
+    }
+    actions   = ["s3:GetObject"]
+    resources = ["arn:aws:s3:::${aws_s3_bucket.origin.bucket}/*"]
+  }
+}
+
+resource "aws_s3_bucket_policy" "read_only" {
+  bucket = aws_s3_bucket.origin.bucket
+  policy = data.aws_iam_policy_document.read_only_access.json
+}
+
+# ------------------------------------------------------------
 # AWS Cloudfront
 # ------------------------------------------------------------
 
@@ -18,8 +68,16 @@ data "aws_route53_zone" "main" {
 
 resource "aws_cloudfront_distribution" "api_gateway" {
   enabled = true
+  default_root_object = "index.html"
   aliases = [var.cloudfront_alternate_domain]
   
+  custom_error_response {
+    error_caching_min_ttl = 10
+    error_code            = 404
+    response_code         = 200
+    response_page_path    = "/index.html"
+  } 
+
   origin {
     domain_name = "${var.aws_api_gateway_domain_name}"
     origin_id = "application-api"
@@ -31,19 +89,32 @@ resource "aws_cloudfront_distribution" "api_gateway" {
     }
   }
 
+  origin {
+    domain_name = aws_s3_bucket.origin.bucket_regional_domain_name
+    origin_id   = aws_s3_bucket.origin.bucket
+
+    s3_origin_config {
+      origin_access_identity = aws_cloudfront_origin_access_identity.storage.cloudfront_access_identity_path
+    }
+  }
+
   default_cache_behavior {
-    # path_pattern     = "api/*" TODO: need to add this for ordered cache behavior when S3 origin is added
+    allowed_methods        = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+    cached_methods         = ["GET", "HEAD"]
+    target_origin_id       = aws_s3_bucket.origin.bucket
+    viewer_protocol_policy = "redirect-to-https"
+    cache_policy_id  = "658327ea-f89d-4fab-a63d-7e88639e58f6" # CachingOptimized
+  }
+
+  ordered_cache_behavior {
+    path_pattern     = "/api/*"
     allowed_methods  = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
     cached_methods   = ["GET", "HEAD"]
     target_origin_id = "application-api"
-    cache_policy_id  = "658327ea-f89d-4fab-a63d-7e88639e58f6" # CachingOptimized
-
-    min_ttl                = 0
-    default_ttl            = 3600
-    max_ttl                = 86400
-    compress               = true
-    viewer_protocol_policy = "https-only"
+    cache_policy_id = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad" # CachingDisabled
+    viewer_protocol_policy = "allow-all"
   }
+
 
   viewer_certificate {
     acm_certificate_arn = data.aws_acm_certificate.main.arn
