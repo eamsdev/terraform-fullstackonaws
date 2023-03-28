@@ -31,6 +31,8 @@ module "vpc" {
 
 module "acm" {
   source = "./modules/acm"
+
+  domain = var.acm_domain_name
 }
 
 module "ecs" {
@@ -40,29 +42,111 @@ module "ecs" {
   vpc_id = module.vpc.vpc_id
 }
 
-module "load_balancer" {
-  source = "./modules/load_balancer"
+module "alb_security_group" {
+  source  = "terraform-aws-modules/security-group/aws"
 
-  name_prefix = local.name_prefix
-  vpc = module.vpc
-  target_port = var.weatherapi_container_port
+  name        = "alb-sg"
+  description = "ALB for example usage"
+  vpc_id      = module.vpc.vpc_id
+
+  ingress_cidr_blocks = ["0.0.0.0/0"]
+  ingress_rules       = ["http-80-tcp"]
+
+  egress_rules = ["all-all"]
+}
+
+
+module "alb" {
+  source  = "terraform-aws-modules/alb/aws"
+  internal = true
+  name = "alb-test"
+  load_balancer_type = "application"
+
+  vpc_id          = module.vpc.vpc_id
+  security_groups = [module.alb_security_group.security_group_id]
+  subnets         = module.vpc.private_subnets
+
+  target_groups = [
+    {
+      backend_protocol = "HTTP"
+      backend_port     = 80
+      target_type      = "ip"
+      health_check = {
+        path = "/health"
+      }
+    }
+  ]
+
+  
+  http_tcp_listeners = [
+    {
+      port               = 80
+      protocol           = "HTTP"
+    }
+  ]
+}
+
+
+module "api_gateway" {
+  source = "terraform-aws-modules/apigateway-v2/aws"
+
+  name          = "dev-http"
+  description   = "My awesome HTTP API Gateway"
+  protocol_type = "HTTP"
+
+  cors_configuration = {
+    allow_headers = ["*"]
+    allow_methods = ["*"]
+    allow_origins = ["*"]
+  }
+
+  # Custom domain
+  domain_name                 = var.api_endpoint
+  domain_name_certificate_arn = module.acm.aws_acm_certificate.arn  
+
+  # Routes and integrations
+  integrations = {
+    "ANY /{proxy+}" = {
+      connection_type    = "VPC_LINK"
+      vpc_link           = "my-vpc"
+      integration_type   = "HTTP_PROXY"
+      integration_method = "ANY"
+      integration_uri    = module.alb.http_tcp_listener_arns[0]
+    }
+  }
+
+  vpc_links = {
+    my-vpc = {
+      name               = "example_link"
+      security_group_ids = [module.api_gateway_security_group.security_group_id]
+      subnet_ids         = module.vpc.private_subnets
+    }
+  }
+
+  tags = {
+    Name = "http-apigateway"
+  }
+}
+
+module "api_gateway_security_group" {
+  source  = "terraform-aws-modules/security-group/aws"
+
+  name        = "api-gateway-sg"
+  description = "API Gateway group for example usage"
+  vpc_id      = module.vpc.vpc_id
+
+  ingress_cidr_blocks = ["0.0.0.0/0"]
+  ingress_rules       = ["http-80-tcp"]
+
+  egress_rules = ["all-all"]
 }
 
 module "routes" {
   source = "./modules/routes"
 
   aws_acm_certificate = module.acm.aws_acm_certificate
-  domain_name = module.api_gateway.aws_api_gateway_domain_name
-  regional_domain_name = module.api_gateway.aws_api_gateway_regional_domain_name
-}
-
-module "api_gateway" {
-  source = "./modules/api_gateway"
-
-  name_prefix = local.name_prefix
-  aws_lb = module.load_balancer.lb
-  aws_acm_certificate = module.acm.aws_acm_certificate
-  api_gateway_domain_name = var.api_gateway_domain_name
+  domain_name = var.api_endpoint
+  regional_domain_name = module.api_gateway.apigatewayv2_domain_name_target_domain_name
 }
 
 module "rds" {
@@ -79,34 +163,32 @@ module "rds" {
 module "services_weather_api" {
   source = "./modules/services/weather_api"
 
-  name_prefix = local.name_prefix
-  vpc_id = module.vpc.vpc_id
   aws_region = var.aws_region
   private_subnets = module.vpc.private_subnets
   ecs_tasks_sg_id = module.ecs.ecs_tasks_sg_id
   db_access_sg_id = module.rds.db_access_sg_id
   aws_ecs_cluster_id = module.ecs.aws_ecs_cluster_id
-  weatherapi_host_port = var.weatherapi_host_port
-  weatherapi_container_port = var.weatherapi_container_port
   ecs_task_execution_role_arn = module.ecs.ecs_task_execution_role_arn
-  aws_alb_target_group_arn = module.load_balancer.aws_alb_target_group.arn
+  aws_alb_target_group_arn = module.alb.target_group_arns[0]
   connection_string = "server=${module.rds.aws_db_address};port=${module.rds.aws_db_port};uid=${var.database_username};pwd=${var.database_password};database=weather_api;sslmode=required"
 }
 
 module "cloudfront" {
   source = "./modules/cloudfront"
 
-  aws_api_gateway_domain_name = module.api_gateway.aws_api_gateway_domain_name
+  api_endpoint = module.api_gateway.apigatewayv2_domain_name_target_domain_name
+  domain = var.acm_domain_name
+  static_hosting_endpoint = var.static_hosting_endpoint
 }
 
-output "api_gateway_endpoint" {
-  value = "https://${module.api_gateway.aws_api_gateway_domain_name}"
+output "cloudfront_endpoint" {
+  value = "${var.static_hosting_endpoint}"
+}
+
+output "api_endpoint" {
+  value = "${var.api_endpoint}"
 }
 
 output "db_endpoint" {
   value = "${module.rds.aws_db_endpoint}"
-}
-
-output "cloudfront_domain_name" {
-  value = "${module.cloudfront.cloudfront_domain_name}"
 }

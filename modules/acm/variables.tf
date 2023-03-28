@@ -1,1 +1,1 @@
-variable "domain" { default = "*.eams.dev" }
+variable "domain" {}

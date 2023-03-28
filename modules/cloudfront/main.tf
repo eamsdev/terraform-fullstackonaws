@@ -69,7 +69,7 @@ data "aws_route53_zone" "main" {
 resource "aws_cloudfront_distribution" "api_gateway" {
   enabled = true
   default_root_object = "index.html"
-  aliases = [var.cloudfront_alternate_domain]
+  aliases = [var.static_hosting_endpoint]
   
   custom_error_response {
     error_caching_min_ttl = 10
@@ -79,7 +79,7 @@ resource "aws_cloudfront_distribution" "api_gateway" {
   } 
 
   origin {
-    domain_name = "${var.aws_api_gateway_domain_name}"
+    domain_name = "${var.api_endpoint}"
     origin_id = "application-api"
     custom_origin_config {
       http_port              = "80"
@@ -131,7 +131,7 @@ resource "aws_cloudfront_distribution" "api_gateway" {
 
 resource "aws_route53_record" "cloudfront_record" {
   zone_id = data.aws_route53_zone.main.zone_id
-  name    = var.cloudfront_alternate_domain
+  name    = var.static_hosting_endpoint
   type    = "A"
   
   alias {
