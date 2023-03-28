@@ -1,4 +1,4 @@
 variable "route53_name" { default = "eams.dev" }
-variable "domain_name" {}
+variable "custom_domain_name" {}
 variable "aws_acm_certificate" {}
-variable "regional_domain_name" {}
+variable "target_domain_name" {}

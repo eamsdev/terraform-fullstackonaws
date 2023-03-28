@@ -29,7 +29,7 @@ module "vpc" {
   }
 }
 
-module "acm" {
+module "api_certificate" {
   source = "./modules/acm"
 
   domain = var.acm_domain_name
@@ -145,8 +145,8 @@ module "routes" {
   source = "./modules/routes"
 
   aws_acm_certificate = module.acm.aws_acm_certificate
-  domain_name = var.api_endpoint
-  regional_domain_name = module.api_gateway.apigatewayv2_domain_name_target_domain_name
+  custom_domain_name = var.api_endpoint
+  target_domain_name = module.api_gateway.apigatewayv2_domain_name_target_domain_name
 }
 
 module "rds" {
@@ -177,7 +177,7 @@ module "cloudfront" {
   source = "./modules/cloudfront"
 
   api_endpoint = module.api_gateway.apigatewayv2_domain_name_target_domain_name
-  domain = var.acm_domain_name
+  certificate_domain_name = var.acm_domain_name
   static_hosting_endpoint = var.static_hosting_endpoint
 }
 

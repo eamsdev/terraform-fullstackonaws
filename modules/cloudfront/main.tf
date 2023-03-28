@@ -58,7 +58,7 @@ provider "aws" {
 }
 
 data "aws_acm_certificate" "main" {
-  domain = var.domain
+  domain = var.certificate_domain_name
   provider = aws.virginia
 }
 

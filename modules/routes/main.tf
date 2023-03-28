@@ -8,8 +8,8 @@ data "aws_route53_zone" "main" {
 
 resource "aws_route53_record" "main" {
   zone_id = data.aws_route53_zone.main.zone_id
-  name    = var.domain_name
+  name    = var.custom_domain_name
   type    = "CNAME"
-  records = [var.regional_domain_name]
+  records = [var.target_domain_name]
   ttl     = "60"
 }
