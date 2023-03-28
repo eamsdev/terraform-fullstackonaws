@@ -16,6 +16,7 @@ variable "database_subnets" { default = ["10.0.201.0/24", "10.0.202.0/24"] }
 variable "api_endpoint" { default = "api.eams.dev" }
 variable "static_hosting_endpoint" { default = "application.eams.dev" }
 variable "acm_domain_name" { default = "*.eams.dev" }
+variable "route53_name" { default = "eams.dev" }
 
 # ------------------------------------------------------------
 # RDS

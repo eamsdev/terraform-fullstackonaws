@@ -29,10 +29,8 @@ module "vpc" {
   }
 }
 
-module "api_certificate" {
-  source = "./modules/acm"
-
-  domain = var.acm_domain_name
+data "aws_acm_certificate" "api_gateway_certificate" {
+  domain = var.domain
 }
 
 module "ecs" {
@@ -102,7 +100,7 @@ module "api_gateway" {
 
   # Custom domain
   domain_name                 = var.api_endpoint
-  domain_name_certificate_arn = module.acm.aws_acm_certificate.arn  
+  domain_name_certificate_arn = aws_acm_certificate.api_gateway_certificate.arn  
 
   # Routes and integrations
   integrations = {
@@ -144,7 +142,7 @@ module "api_gateway_security_group" {
 module "routes" {
   source = "./modules/routes"
 
-  aws_acm_certificate = module.acm.aws_acm_certificate
+  route53_name = var.route53_name
   custom_domain_name = var.api_endpoint
   target_domain_name = module.api_gateway.apigatewayv2_domain_name_target_domain_name
 }
