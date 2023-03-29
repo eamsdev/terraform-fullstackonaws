@@ -6,11 +6,12 @@ This project is designed to create an infrastructure as code for fullstack, cont
 
 - ECS (Elastic Container Service)
 - API Gateway w/ VPC Link
-- Network Load Balancer
-- Route53 record for custom domain
+- VPC Link to integrate API Gateway with the private subnet resources
+- Application Load Balancer to route requests from API Gateway to the ECS Cluster
+- Route53 record for Cloudfront/Api Gateway custom domain
 - AWS RDS with MySQL
 - Cloudfront + S3 for static hosting
-- ECS tasks with a basic .NET weather API for demonstration purposes
+- ECS task with a basic .NET weather API for demonstration purposes
 
 ## Prerequisites
 
