@@ -2,7 +2,7 @@
 # S3
 # ------------------------------------------------------------
 resource "aws_s3_bucket" "origin" {
-  bucket        = "eamsdev-application-bucket"
+  bucket        = "${var.name_prefix}-statichosting-bucket"
   force_destroy = true
 }
 
@@ -29,7 +29,7 @@ resource "aws_s3_bucket_public_access_block" "s3_block_public" {
 }
 
 resource "aws_cloudfront_origin_access_identity" "storage" {
-  comment = "Identity for S3 eamsdev-application-bucket bucket."
+  comment = "Identity for S3 ${var.name_prefix}-statichosting-bucket bucket."
 }
 
 data "aws_iam_policy_document" "read_only_access" {

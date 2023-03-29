@@ -1,8 +1,8 @@
 # ------------------------------------------------------------
 # Meta
 # ------------------------------------------------------------
-variable "stack_identifier" { default = "api" }
-variable "environment" { default = "development" }
+variable "stack_identifier" { default = "example" }
+variable "environment" { default = "dev" }
 
 # ------------------------------------------------------------
 # Network 

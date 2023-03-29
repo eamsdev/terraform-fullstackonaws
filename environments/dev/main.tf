@@ -1,5 +1,5 @@
 locals {
-  name_prefix = "eamsdev-${var.stack_identifier}-${var.environment}"
+  name_prefix = "${var.stack_identifier}-${var.environment}"
 }
 
 module "vpc" {
@@ -39,8 +39,7 @@ module "ecs" {
 module "alb_security_group" {
   source  = "terraform-aws-modules/security-group/aws"
 
-  name        = "alb-sg"
-  description = "ALB for example usage"
+  name        = "${local.name_prefix}-api-gw-alb-sg"
   vpc_id      = module.vpc.vpc_id
 
   ingress_cidr_blocks = ["0.0.0.0/0"]
@@ -53,7 +52,7 @@ module "alb_security_group" {
 module "alb" {
   source  = "terraform-aws-modules/alb/aws"
   internal = true
-  name = "alb-test"
+  name = "${local.name_prefix}-api-gw-alb"
   load_balancer_type = "application"
 
   vpc_id          = module.vpc.vpc_id
@@ -84,8 +83,7 @@ module "alb" {
 module "api_gateway" {
   source = "terraform-aws-modules/apigateway-v2/aws"
 
-  name          = "dev-http"
-  description   = "My awesome HTTP API Gateway"
+  name          = "${local.name_prefix}-api-gw"
   protocol_type = "HTTP"
 
   cors_configuration = {
@@ -102,7 +100,7 @@ module "api_gateway" {
   integrations = {
     "ANY /{proxy+}" = {
       connection_type    = "VPC_LINK"
-      vpc_link           = "my-vpc"
+      vpc_link           = "api-gw-vpc-link"
       integration_type   = "HTTP_PROXY"
       integration_method = "ANY"
       integration_uri    = module.alb.http_tcp_listener_arns[0]
@@ -110,22 +108,18 @@ module "api_gateway" {
   }
 
   vpc_links = {
-    my-vpc = {
-      name               = "example_link"
+    api-gw-vpc-link = {
+      name               = "${local.name_prefix}-api-gw-vpc-link"
       security_group_ids = [module.api_gateway_security_group.security_group_id]
       subnet_ids         = module.vpc.private_subnets
     }
-  }
-
-  tags = {
-    Name = "http-apigateway"
   }
 }
 
 module "api_gateway_security_group" {
   source  = "terraform-aws-modules/security-group/aws"
 
-  name        = "api-gateway-sg"
+  name        = "${local.name_prefix}-api-gw-sg"
   description = "API Gateway group for example usage"
   vpc_id      = module.vpc.vpc_id
 
@@ -170,6 +164,7 @@ module "services_weather_api" {
 module "cloudfront" {
   source = "../../modules/cloudfront"
 
+  name_prefix = local.name_prefix
   api_endpoint = var.api_endpoint
   certificate_domain_name = var.acm_domain_name
   static_hosting_endpoint = var.static_hosting_endpoint
