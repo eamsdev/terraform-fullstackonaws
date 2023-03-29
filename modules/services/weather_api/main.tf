@@ -27,7 +27,7 @@ resource "aws_ecs_task_definition" "weatherapi_task_definition" {
       },
       "portMappings": [
         {
-          "containerPort": 80
+          "containerPort": 80,
           "hostPort": 80
         }
       ]

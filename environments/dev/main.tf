@@ -1,7 +1,3 @@
-terraform {
-  backend "s3" {}
-}
-
 locals {
   name_prefix = "eamsdev-${var.stack_identifier}-${var.environment}"
 }
@@ -30,11 +26,11 @@ module "vpc" {
 }
 
 data "aws_acm_certificate" "api_gateway_certificate" {
-  domain = var.domain
+  domain = var.acm_domain_name
 }
 
 module "ecs" {
-  source = "./modules/ecs"
+  source = "../../modules/ecs"
   
   name_prefix = local.name_prefix
   vpc_id = module.vpc.vpc_id
@@ -100,7 +96,7 @@ module "api_gateway" {
 
   # Custom domain
   domain_name                 = var.api_endpoint
-  domain_name_certificate_arn = aws_acm_certificate.api_gateway_certificate.arn  
+  domain_name_certificate_arn = data.aws_acm_certificate.api_gateway_certificate.arn  
 
   # Routes and integrations
   integrations = {
@@ -140,7 +136,7 @@ module "api_gateway_security_group" {
 }
 
 module "routes" {
-  source = "./modules/routes"
+  source = "../../modules/routes"
 
   route53_name = var.route53_name
   custom_domain_name = var.api_endpoint
@@ -148,7 +144,7 @@ module "routes" {
 }
 
 module "rds" {
-  source = "./modules/rds"
+  source = "../../modules/rds"
 
   vpc_id = module.vpc.vpc_id
   public_db = var.public_db
@@ -159,7 +155,7 @@ module "rds" {
 }
 
 module "services_weather_api" {
-  source = "./modules/services/weather_api"
+  source = "../../modules/services/weather_api"
 
   aws_region = var.aws_region
   private_subnets = module.vpc.private_subnets
@@ -172,9 +168,9 @@ module "services_weather_api" {
 }
 
 module "cloudfront" {
-  source = "./modules/cloudfront"
+  source = "../../modules/cloudfront"
 
-  api_endpoint = module.api_gateway.apigatewayv2_domain_name_target_domain_name
+  api_endpoint = var.api_endpoint
   certificate_domain_name = var.acm_domain_name
   static_hosting_endpoint = var.static_hosting_endpoint
 }

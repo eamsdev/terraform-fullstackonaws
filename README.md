@@ -1,12 +1,16 @@
 # Terraform IasC for Full Stack Containerized Application
 
+![Architecture](./architecture.png)
+
 This project is designed to create an infrastructure as code for fullstack, containerized applications on AWS using Terraform. The infrastructure consists of the following AWS services:
 
 - ECS (Elastic Container Service)
 - API Gateway w/ VPC Link
 - Network Load Balancer
 - Route53 record for custom domain
-- ECS tasks with a basic .NET weather API
+- AWS RDS with MySQL
+- Cloudfront + S3 for static hosting
+- ECS tasks with a basic .NET weather API for demonstration purposes
 
 ## Prerequisites
 
@@ -23,15 +27,6 @@ Before getting started, you will need to have the following installed on your ma
 4. Run `terraform plan` to see what changes will be made to your infrastructure.
 5. Run `terraform apply` to create the infrastructure on AWS.
 6. (Optional) Run `terraform destroy` to destroy the infrastructure.
-
-## Road Map
-
-The following features will be added in the future:
-
-- AWS RDS support for SQL
-- Accessing the internet from the private subnet (needs testing)
-- Multiple ECS task support
-- Cloudfront for static hosting
 
 ## License
 
