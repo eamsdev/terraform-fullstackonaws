@@ -164,6 +164,7 @@ module "services_weather_api" {
 module "cloudfront" {
   source = "../../modules/cloudfront"
 
+  route53_name = var.route53_name
   name_prefix = local.name_prefix
   api_endpoint = var.api_endpoint
   certificate_domain_name = var.acm_domain_name
